@@ -57,7 +57,7 @@ static int x_shortcut_tear_down_error_handler(void);
 static void x_win_move(int width, int height);
 static void setopacity(Window win, unsigned long opacity);
 static void x_handle_click(XEvent ev);
-static void x_screen_info(screen_info * scr);
+static double x_screen_info(screen_info * scr);
 static void x_win_setup(void);
 
 
@@ -337,6 +337,7 @@ static colored_layout *r_init_shared(cairo_t *c, notification *n)
                 die("Unable to allocate memory", EXIT_FAILURE);
         }
         cl->pango_context = pango_cairo_create_context(c);
+        pango_cairo_context_set_resolution(cl->pango_context, 256.);
         cl->l = pango_layout_new(cl->pango_context);
 
         if (!settings.word_wrap) {
@@ -891,13 +892,14 @@ sc_cleanup:
          * Update the information about the monitor
          * geometry.
          */
-static void x_screen_info(screen_info * scr)
+static double x_screen_info(screen_info * scr)
 {
+        int screen = 0;
 #ifdef XINERAMA
         int n;
         XineramaScreenInfo *info;
         if ((info = XineramaQueryScreens(xctx.dpy, &n))) {
-                int screen = select_screen(info, n);
+                screen = select_screen(info, n);
                 if (screen >= n) {
                         /* invalid monitor, fallback to default */
                         screen = 0;
@@ -913,7 +915,6 @@ static void x_screen_info(screen_info * scr)
                 scr->dim.x = 0;
                 scr->dim.y = 0;
 
-                int screen;
                 if (settings.monitor >= 0)
                         screen = settings.monitor;
                 else
@@ -922,6 +923,14 @@ static void x_screen_info(screen_info * scr)
                 scr->dim.w = DisplayWidth(xctx.dpy, screen);
                 scr->dim.h = DisplayHeight(xctx.dpy, screen);
         }
+
+        int w = DisplayWidth(xctx.dpy, screen);
+        int wmm = DisplayWidthMM(xctx.dpy, screen);
+        int h = DisplayHeight(xctx.dpy, screen);
+        int hmm = DisplayHeightMM(xctx.dpy, screen);
+        double wdpi = w / (wmm * 25.4);
+        double hdpi = h / (hmm * 25.4);
+        return (wdpi + hdpi) / 2.;
 }
 
         /*
@@ -970,6 +979,10 @@ void x_setup(void)
         xctx.geometry.mask = XParseGeometry(settings.geom,
                                             &xctx.geometry.x, &xctx.geometry.y,
                                             &xctx.geometry.w, &xctx.geometry.h);
+        xctx.geometry.x *= 256. / 96.;
+        xctx.geometry.y *= 256. / 96.;
+        xctx.geometry.w *= 256. / 96.;
+        xctx.geometry.h *= 256. / 96.;
 
         xctx.screensaver_info = XScreenSaverAllocInfo();
 
