@@ -36,6 +36,7 @@ typedef struct _cairo_ctx {
 } cairo_ctx_t;
 
 typedef struct _colored_layout {
+        PangoContext *pango_context;
         PangoLayout *l;
         color_t fg;
         color_t bg;
@@ -179,6 +180,7 @@ static void r_update_layouts_width(GSList *layouts, int width)
 static void free_colored_layout(void *data)
 {
         colored_layout *cl = data;
+        g_object_unref(cl->pango_context);
         g_object_unref(cl->l);
         pango_attr_list_unref(cl->attr);
         g_free(cl->text);
@@ -334,7 +336,8 @@ static colored_layout *r_init_shared(cairo_t *c, notification *n)
         if(cl == NULL) {
                 die("Unable to allocate memory", EXIT_FAILURE);
         }
-        cl->l = pango_cairo_create_layout(c);
+        cl->pango_context = pango_cairo_create_context(c);
+        cl->l = pango_layout_new(cl->pango_context);
 
         if (!settings.word_wrap) {
                 pango_layout_set_ellipsize(cl->l, PANGO_ELLIPSIZE_MIDDLE);
